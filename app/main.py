@@ -1,19 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
-from app.core.database import engine
-from app.models import models
+from app.core.database import engine , Base
+from app.blob_models import BlobData , BlobMetadata 
 
-# Create database tables asynchronously
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
 
 app = FastAPI(
     title="Simple Drive API",
     description="A simple object storage system with multiple backends",
     version="1.0.0",
 )
+
+@app.on_event("startup")
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 # Configure CORS
 app.add_middleware(

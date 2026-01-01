@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     AUTH_TOKEN: str = "simple-drive-secret-token"
 
     # Storage configuration
-    STORAGE_BACKEND: StorageBackend = StorageBackend.LOCAL
+    STORAGE_BACKEND: StorageBackend = StorageBackend.DATABASE
     
     # S3 configuration
     S3_ENDPOINT: Optional[str] = None

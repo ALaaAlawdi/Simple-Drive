@@ -2,13 +2,27 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 import base64
+import uuid
+from datetime import datetime, timezone
+from pydantic import BaseModel, field_serializer
+
+
 
 class BlobCreate(BaseModel):
-    id: str = Field(..., min_length=1, max_length=255)
-    data: str  # Base64 encoded
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)  
+    data: bytes  # Base64 encoded
+  
+
+class BlobResponse(BaseModel):
+    id: uuid.UUID
+    data: bytes
+    size: int
+    created_at: datetime
     name: Optional[str] = None
     path: Optional[str] = None
-    
+    storage_backend: Optional[str] = None
+    storage_path: Optional[str] = None
+
     @field_validator('data')
     def validate_base64(cls, v):
         try:
@@ -17,7 +31,7 @@ class BlobCreate(BaseModel):
             return v
         except Exception:
             raise ValueError("Invalid base64 data")
-    
+
     @field_validator('path')
     def validate_path(cls, v):
         if v is not None:
@@ -27,14 +41,15 @@ class BlobCreate(BaseModel):
             v = v.strip('/')
         return v
 
-class BlobResponse(BaseModel):
-    id: str
-    data: str
-    size: int
-    created_at: datetime
-    name: Optional[str] = None
-    path: Optional[str] = None
-    
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: datetime) -> str:
+        return (
+            dt.astimezone(timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+
     class Config:
         from_attributes = True
 

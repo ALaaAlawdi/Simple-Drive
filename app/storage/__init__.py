@@ -8,7 +8,7 @@ from app.core.config import StorageBackend, settings
 def get_storage_backend(backend_type: StorageBackend = None) -> StorageBackendInterface:
     """Factory function to get the configured storage backend"""
     if backend_type is None:
-        backend_type = settings.storage_backend
+        backend_type = settings.STORAGE_BACKEND
     
     backends = {
         StorageBackend.S3: S3Storage,

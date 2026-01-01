@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 from app.core.config import StorageBackend
+from app.blob_schemas import BlobResponse , BlobCreate
 
 class StorageBackendInterface(ABC):
     """Abstract base class for storage backends"""
     
     @abstractmethod
-    async def save(self, blob_id: str, data: bytes, **kwargs) -> str:
+    async def save(self, blob_id: str, data: bytes, filename: str, path: str ,**kwargs) -> BlobCreate:
         """
         Save data to storage backend
         
@@ -20,7 +21,7 @@ class StorageBackendInterface(ABC):
         pass
     
     @abstractmethod
-    async def retrieve(self, blob_id: str, **kwargs) -> Optional[bytes]:
+    async def retrieve(self, blob_id: str, **kwargs) -> BlobResponse:
         """
         Retrieve data from storage backend
         
@@ -29,19 +30,6 @@ class StorageBackendInterface(ABC):
             
         Returns:
             Binary data if found, None otherwise
-        """
-        pass
-    
-    @abstractmethod
-    async def delete(self, blob_id: str, **kwargs) -> bool:
-        """
-        Delete data from storage backend
-        
-        Args:
-            blob_id: Unique identifier for the blob
-            
-        Returns:
-            True if deleted, False otherwise
         """
         pass
     

@@ -47,7 +47,7 @@ class S3Storage(StorageBackendInterface):
         ).digest()
         return base64.b64encode(signature).decode()
     
-    async def save(self, blob_id: str, data: bytes, **kwargs) -> str:
+    async def save(self, blob_id: str, data: bytes, filename: str, path: str, **kwargs) -> str:
         """Save data to S3-compatible storage"""
         path = f"/{self.bucket}/{blob_id}"
         url = f"{self.endpoint}{path}"
@@ -84,22 +84,7 @@ class S3Storage(StorageBackendInterface):
                 return None
             raise Exception(f"Failed to retrieve from S3: {str(e)}")
     
-    async def delete(self, blob_id: str, **kwargs) -> bool:
-        """Delete data from S3-compatible storage"""
-        path = f"/{self.bucket}/{blob_id}"
-        url = f"{self.endpoint}{path}"
-        
-        headers = {}
-        headers = self._sign_request('DELETE', path, headers)
-        
-        try:
-            response = await self.client.delete(url, headers=headers)
-            response.raise_for_status()
-            return True
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                return False
-            raise Exception(f"Failed to delete from S3: {str(e)}")
+   
     
     def get_backend_type(self) -> StorageBackend:
         return StorageBackend.S3

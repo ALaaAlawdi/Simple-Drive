@@ -1,72 +1,88 @@
 from typing import Optional
 import base64
-from sqlalchemy import create_engine, Column, String, LargeBinary, MetaData, Table
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import  Column, String, LargeBinary, MetaData, Table
 from app.storage.base import StorageBackendInterface
 from app.core.config import StorageBackend, settings
+from fastapi import Depends 
 from app.core.database import async_session
+from app.blob_crud import  create_blob_data , create_blob_metadata  , get_blob_data , get_blob_metadata
+from app.blob_models  import BlobMetadata, BlobData  
+from app.blob_schemas import BlobResponse , BlobCreate
+import uuid
 
 class DatabaseStorage(StorageBackendInterface):
-    """Database storage backend using a separate table for blob data"""
     
-    def __init__(self):
-        # Create a separate engine for blob storage if needed
-        # Using the same database but different table
-        self.db = async_session()
+    async def save(
+        self,
+        blob_id: str,
+        data: bytes,
+        filename: str,
+        path: str,
+        **kwargs,
+    ) -> BlobResponse | None:
+
         
-        # Define the blob storage table
-        self.metadata = MetaData()
-        self.blob_table = Table(
-            settings.DB_STORAGE_TABLE,
-            self.metadata,
-            Column('id', String(255), primary_key=True),
-            Column('data', LargeBinary, nullable=False),
-            extend_existing=True
+        # 2️⃣ Build BlobCreate (what create_blob_data expects)
+        blob = BlobCreate(
+            id=blob_id,
+            data=data,
         )
-        
-        # Create the table if it doesn't exist
-        self.metadata.create_all(bind=self.db.bind)
-    
-    async def save(self, blob_id: str, data: bytes, **kwargs) -> str:
-        """Save data to database table"""
-        try:
-            # Insert or replace the blob
-            stmt = self.blob_table.insert().values(id=blob_id, data=data)
-            do_update_stmt = stmt.on_conflict_do_update(
-                index_elements=['id'],
-                set_=dict(data=data)
+
+        # 3️⃣ OPEN A REAL SESSION
+        async with async_session() as db:
+
+            # 4️⃣ USE create_blob_data (THIS IS WHAT YOU WANTED)
+            blob_data_response = await create_blob_data(db=db, blob=blob)
+            if not blob_data_response:
+                return None
+
+            # 5️⃣ Store metadata in SAME session
+            blob_metadata = BlobMetadata(
+                id=blob_id,
+                size=len(data),
+                name=filename,
+                path=path,
+                storage_backend=settings.STORAGE_BACKEND,
+                storage_path=settings.LOCAL_STORAGE_PATH,
             )
-            self.db.execute(do_update_stmt)
-            self.db.commit()
-            return blob_id
-        except Exception as e:
-            self.db.rollback()
-            raise Exception(f"Failed to save to database: {str(e)}")
+
+            blob_metadata = await create_blob_metadata(db=db, blob_metadata=blob_metadata)
+            if not blob_metadata:
+                return None
+
+        # 6️⃣ Return API response
+        return BlobResponse(
+            id=blob_id,
+            data=data,
+            size=blob_metadata.size,
+            created_at=str(blob_metadata.created_at),
+            name=blob_metadata.name,
+            path=blob_metadata.path,
+            storage_backend=blob_metadata.storage_backend,
+            storage_path=blob_metadata.storage_path,
+        )
+
     
-    async def retrieve(self, blob_id: str, **kwargs) -> Optional[bytes]:
-        """Retrieve data from database table"""
-        try:
-            result = self.db.execute(
-                self.blob_table.select().where(self.blob_table.c.id == blob_id)
-            ).fetchone()
-            
-            if result:
-                return result.data
-            return None
-        except Exception as e:
-            raise Exception(f"Failed to retrieve from database: {str(e)}")
-    
-    async def delete(self, blob_id: str, **kwargs) -> bool:
-        """Delete data from database table"""
-        try:
-            result = self.db.execute(
-                self.blob_table.delete().where(self.blob_table.c.id == blob_id)
+    async def retrieve(self, blob_id: str, **kwargs) -> BlobResponse | None:
+        async with async_session() as db:
+            blob_data = await get_blob_data(db=db, blob_id=blob_id)
+            if not blob_data:
+                return None
+
+            blob_metadata = await get_blob_metadata(db=db, blob_id=blob_id)
+            if not blob_metadata:
+                return None
+
+            return BlobResponse(
+                id=blob_data.id,
+                data=blob_data.data,           # Base64
+                size=blob_metadata.size,
+                created_at=str(blob_metadata.created_at),
+                name=blob_metadata.name,
+                path=blob_metadata.path,
+                storage_backend=blob_metadata.storage_backend,
+                storage_path=blob_metadata.storage_path,
             )
-            self.db.commit()
-            return result.rowcount > 0
-        except Exception as e:
-            self.db.rollback()
-            raise Exception(f"Failed to delete from database: {str(e)}")
     
     def get_backend_type(self) -> StorageBackend:
         return StorageBackend.DATABASE
