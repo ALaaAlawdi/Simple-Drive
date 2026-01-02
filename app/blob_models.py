@@ -13,9 +13,10 @@ class BlobData(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) 
     data = Column(BYTEA, nullable=False)  
     
-    # Relationship with BlobMetadata
+    # relationship with BlobMetadata
     blob_metadata = relationship("BlobMetadata", back_populates="blob_data", uselist=False, cascade="all, delete-orphan")
 
+    # single blob_data has one blob_metadata
     def __repr__(self):
         return f"<BlobData(id={self.id})>"
     
@@ -32,15 +33,15 @@ class BlobMetadata(Base):
     name = Column(String(500), nullable=True)
     path = Column(Text, nullable=True)  
     
-    # Relationship with BlobData
+    # relationship with BlobData
     blob_data = relationship("BlobData", back_populates="blob_metadata")
 
-    # Composite indexes for better query performance
+    # Indexes
     __table_args__ = (
         Index('idx_name_path', 'name', 'path'),
         Index('idx_created_at', 'created_at'),
         Index('idx_storage_backend', 'storage_backend'),
     )
-    
+    # 
     def __repr__(self):
         return f"<BlobMetadata(id={self.id}, size={self.size}, backend={self.storage_backend})>"

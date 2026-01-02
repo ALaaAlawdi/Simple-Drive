@@ -1,18 +1,20 @@
+# import necessary modules
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.database import AsyncSession
 from app.core.database import get_db
 from app.core.security import verify_token
-from app.blob_schemas import BlobCreate, BlobResponse
+from app.blob_schemas import  BlobResponse
 from app.core.logger import setup_logger
 from app.core.config import settings
 import base64
 import uuid
 from app.storage import get_storage_backend
 
+# Define API router
 router = APIRouter()
 logger = setup_logger(__name__)
 
-
+# Create blob endpoint
 @router.post("/blobs", response_model=BlobResponse, status_code=201)
 async def create_blob(
     file: UploadFile = File(...),
@@ -57,7 +59,7 @@ async def create_blob(
         logger.error(f"Error creating blob: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-
+# Get blob endpoint
 @router.get("/blobs/{blob_id}", response_model=BlobResponse)
 async def get_blob(
     blob_id: uuid.UUID,
@@ -79,7 +81,7 @@ async def get_blob(
             name=blob_metadata.name,
             path=blob_metadata.path,
             storage_backend=blob_metadata.storage_backend,
-            storage_path=blob_metadata.storage_path,
+            storage_path=blob_metadata.storage_path
         )
 
     except HTTPException:

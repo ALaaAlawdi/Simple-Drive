@@ -8,18 +8,17 @@ import base64
 logger = setup_logger(__name__)
 
 # ---------- BlobData ----------
-
 async def create_blob_data(
     blob: BlobCreate,
     db: AsyncSession ,
 ) -> BlobResponse | None:
     try:
-        # 🔴 REQUIRED: decode Base64 → bytes
+        #  require: decode Base64 → bytes
         binary_data = base64.b64decode(blob.data, validate=True)
 
         db_blob = BlobData(
             id=blob.id,
-            data=binary_data,   # BYTEA ✅
+            data=binary_data,   # BYTEA 
         )
 
         db.add(db_blob)
@@ -35,7 +34,7 @@ async def create_blob_data(
         logger.error(f"Error creating BlobData with ID {blob.id}: {e}")
         return None
 
-
+# ---------- Retrieve BlobData ----------
 async def get_blob_data(
     blob_id,
     db: AsyncSession,
@@ -49,7 +48,7 @@ async def get_blob_data(
         if not db_blob:
             return None
 
-        # 🔴 REQUIRED: bytes → Base64
+        # bytes → Base64
         base64_data = base64.b64encode(db_blob.data).decode("utf-8")
 
         return BlobCreate(
@@ -63,7 +62,6 @@ async def get_blob_data(
 
 
 # ---------- BlobMetadata ----------
-
 async def create_blob_metadata(
     db: AsyncSession,
     blob_metadata: BlobMetadata,
@@ -77,7 +75,7 @@ async def create_blob_metadata(
         logger.error(f"Error creating BlobMetadata with ID {blob_metadata.id}: {e}")
         return None
 
-
+# ---------- Retrieve BlobMetadata ----------
 async def get_blob_metadata(
     db: AsyncSession,
     blob_id: str,

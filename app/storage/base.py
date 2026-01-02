@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 from app.core.config import StorageBackend
-from app.blob_schemas import BlobResponse , BlobCreate
+from app.blob_schemas import BlobResponse 
+
 
 class StorageBackendInterface(ABC):
     """Abstract base class for storage backends"""
     
     @abstractmethod
-    async def save(self, blob_id: str, data: bytes, filename: str, path: str ,**kwargs) -> BlobCreate:
+    async def save(self, blob_id: str, data: bytes, filename: str, path: str ,**kwargs) -> BlobResponse:
         """
         Save data to storage backend
         

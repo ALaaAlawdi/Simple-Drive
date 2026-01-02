@@ -32,20 +32,26 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: Optional[str] = None
     S3_BUCKET: str = "simple-drive"
     S3_REGION: str = "us-east-1"
-    
+
+    # aws credentials
+    AWS_ACCESS_KEY_ID: str = Field(..., env="AWS_ACCESS_KEY_ID")    
+    AWS_SECRET_ACCESS_KEY: str = Field(..., env="AWS_SECRET_ACCESS_KEY")
+    AWS_REGION: str = Field("eu-north-1", env="AWS_REGION")
+
+    # FTP configuration 
+    FTP_HOST: str = Field(..., env="FTP_HOST")
+    FTP_PORT: int = Field(21, env="FTP_PORT")
+    FTP_USERNAME: str = Field(..., env="FTP_USERNAME")
+    FTP_PASSWORD: str = Field(..., env="FTP_PASSWORD")  
+    FTP_DIRECTORY: str = Field("/", env="FTP_DIRECTORY")
+
     # Local storage configuration
     LOCAL_STORAGE_PATH: str = "./storage"
 
     # Database storage configuration
     DB_STORAGE_TABLE: str = "blob_storage"
-    
-    # FTP configuration 
-    FTP_HOST: Optional[str] = None
-    FTP_PORT: int = 21
-    FTP_USERNAME: Optional[str] = None
-    FTP_PASSWORD: Optional[str] = None
-    FTP_DIRECTORY: str = "/simple-drive"
 
+    # Media directory
     BASE_DIR: str = str(Path(__file__).resolve().parent.parent.parent)
     MEDIA_DIR: str = os.path.join(BASE_DIR, "media")
 

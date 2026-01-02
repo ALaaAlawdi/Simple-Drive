@@ -54,7 +54,7 @@ class LocalStorage(StorageBackendInterface):
             name=filename,
             path=path,
             storage_backend=StorageBackend.LOCAL,
-            storage_path=str(file_path),
+            # storage_path=str(file_path),
         )
 
     async def retrieve(self, blob_id: str, **kwargs) -> BlobResponse | None:
@@ -82,10 +82,10 @@ class LocalStorage(StorageBackendInterface):
             data=data,
             size=stat.st_size,
             created_at=created_at,
-            name="Null",          # not persisted
-            path=str(file_path),          # not persisted
+            name="Null",         # Optional 
+            path=str(file_path),   # Optional       
             storage_backend=StorageBackend.LOCAL,
-            storage_path=str(file_path),
+            # storage_path=str(file_path), Optional
         )
 
     def get_backend_type(self) -> StorageBackend:
