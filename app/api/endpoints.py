@@ -2,13 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.database import AsyncSession
 from app.core.database import get_db
 from app.core.security import verify_token
-from app.blob_models import BlobMetadata
 from app.blob_schemas import BlobCreate, BlobResponse
 from app.core.logger import setup_logger
 from app.core.config import settings
 import base64
 import uuid
-from app.dependencies import get_storage_backend
+from app.storage import get_storage_backend
 
 router = APIRouter()
 logger = setup_logger(__name__)

@@ -1,96 +1,68 @@
-import hashlib
-import hmac
-import datetime
-from typing import Optional
-import httpx
-from urllib.parse import urlparse, quote
+from datetime import datetime, timezone
 from app.storage.base import StorageBackendInterface
-from app.core.config import StorageBackend, settings
-import base64
+from app.core.config import StorageBackend
+from app.blob_schemas import BlobResponse
+from app.s3_client import s3_request
+
 
 class S3Storage(StorageBackendInterface):
-    """S3-compatible storage backend using raw HTTP requests"""
-    
-    def __init__(self):
-        self.endpoint = settings.S3_ENDPOINT
-        self.access_key = settings.S3_ACCESS_KEY
-        self.secret_key = settings.S3_SECRET_KEY
-        self.bucket = settings.S3_BUCKET
-        self.region = settings.S3_REGION
 
-        # Initialize HTTP client
-        self.client = httpx.AsyncClient(timeout=30.0)
-    
-    def _sign_request(self, method: str, path: str, headers: dict, payload: bytes = b"") -> dict:
-        """Generate AWS Signature Version 4 for the request"""
-        # This is a simplified version - production should implement full SigV4
-        # For simplicity with MinIO and similar, we might use pre-signed URLs or simpler auth
-        # Here's a basic implementation for demonstration
+    def _object_key(self, blob_id: str) -> str:
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        safe_id = blob_id.replace("/", "_")
+        return f"{ts}__{safe_id}.bin"
+
+    def _extract_created_at(self, key: str) -> datetime:
+        ts = key.split("/")[-1].split("__", 1)[0]
+        return datetime.strptime(ts, "%Y%m%dT%H%M%S%fZ").replace(
+            tzinfo=timezone.utc
+        )
+
+    async def save(
+        self,
+        blob_id: str,
+        data: bytes,
+        filename: str,
+        path: str,
+        **kwargs,
+    ) -> BlobResponse | None:
+
+        object_key = self._object_key(blob_id)
+        resp = s3_request("PUT", object_key, data)
+
+        if resp.status_code not in (200, 201):
+            return None
+
+        return BlobResponse(
+            id=blob_id,
+            data=data,
+            size=len(data),
+            created_at=self._extract_created_at(object_key),
+            name=filename,
+            path=path,
+            storage_backend=StorageBackend.S3,
+            storage_path=object_key,
+        )
+
+    async def retrieve(self, blob_id:  str, **kwargs) -> BlobResponse | None:
+
+        resp = s3_request("GET", object_key=blob_id)
         
-        # For actual S3-compatible services, you'd need full SigV4 implementation
-        # This is a placeholder that would need to be completed
-        
-        # For now, we'll use a simpler approach if endpoint allows
-        if self.access_key and self.secret_key:
-            headers['Authorization'] = f"AWS {self.access_key}:{self._get_signature(method, path)}"
-        
-        return headers
-    
-    def _get_signature(self, method: str, path: str) -> str:
-        """Generate a simple signature (not full SigV4)"""
-        # Simplified for demonstration - real implementation needs full SigV4
-        string_to_sign = f"{method}\n\n\n\n{path}"
-        signature = hmac.new(
-            self.secret_key.encode('utf-8'),
-            string_to_sign.encode('utf-8'),
-            hashlib.sha1
-        ).digest()
-        return base64.b64encode(signature).decode()
-    
-    async def save(self, blob_id: str, data: bytes, filename: str, path: str, **kwargs) -> str:
-        """Save data to S3-compatible storage"""
-        path = f"/{self.bucket}/{blob_id}"
-        url = f"{self.endpoint}{path}"
-        
-        headers = {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': str(len(data)),
-        }
-        
-        # Sign the request
-        headers = self._sign_request('PUT', path, headers, data)
-        
-        try:
-            response = await self.client.put(url, content=data, headers=headers)
-            response.raise_for_status()
-            return blob_id
-        except Exception as e:
-            raise Exception(f"Failed to save to S3: {str(e)}")
-    
-    async def retrieve(self, blob_id: str, **kwargs) -> Optional[bytes]:
-        """Retrieve data from S3-compatible storage"""
-        path = f"/{self.bucket}/{blob_id}"
-        url = f"{self.endpoint}{path}"
-        
-        headers = {}
-        headers = self._sign_request('GET', path, headers)
-        
-        try:
-            response = await self.client.get(url, headers=headers)
-            response.raise_for_status()
-            return response.content
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                return None
-            raise Exception(f"Failed to retrieve from S3: {str(e)}")
-    
-   
-    
+        if resp.status_code != 200:
+            return None
+
+        data = resp.content
+
+        return BlobResponse(
+            id=blob_id,
+            data=data,
+            size=len(data),
+            created_at=self._extract_created_at(storage_path),
+            name="Null",
+            path=storage_path,
+            storage_backend=StorageBackend.S3,
+            storage_path=storage_path,
+        )
+
     def get_backend_type(self) -> StorageBackend:
         return StorageBackend.S3
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.client.aclose()
-    
-    async def __aenter__(self):
-        return self
