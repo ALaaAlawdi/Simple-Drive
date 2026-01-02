@@ -45,7 +45,7 @@ async def create_blob(
             path=path,
         )
 
-        logger.debug(f"Blob data response: {blob_data_response}")
+        logger.debug(f"Blob data response for blob id : {blob_id}")
 
         if not blob_data_response:
             logger.error("Failed to save blob data")
