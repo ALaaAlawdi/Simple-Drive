@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import datetime
 from app.storage.base import StorageBackendInterface
 from app.core.config import settings, StorageBackend
-from app.blob_schemas import BlobResponse
+from app.blob_schemas import BlobResponse ,  BlobCreate
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,7 +33,7 @@ class LocalStorage(StorageBackendInterface):
         filename: str,
         path: str,
         **kwargs,
-    ) -> BlobResponse | None:
+    ) ->  BlobCreate | None:
 
         file_path = self._path_for(blob_id)
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -44,17 +44,11 @@ class LocalStorage(StorageBackendInterface):
         except OSError:
             return None
 
-        stat = file_path.stat()
+        # stat = file_path.stat()
 
-        return BlobResponse(
+        return BlobCreate(
             id=blob_id,
             data=data,
-            size=stat.st_size,
-            created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
-            name=filename,
-            path=path,
-            storage_backend=StorageBackend.LOCAL,
-            # storage_path=str(file_path),
         )
 
     async def retrieve(self, blob_id: str, **kwargs) -> BlobResponse | None:
@@ -82,9 +76,9 @@ class LocalStorage(StorageBackendInterface):
             data=data,
             size=stat.st_size,
             created_at=created_at,
-            name="Null",         # Optional 
-            path=str(file_path),   # Optional       
-            storage_backend=StorageBackend.LOCAL,
+            # name="Null",         # Optional 
+            # path=str(file_path),   # Optional       
+            # storage_backend=StorageBackend.LOCAL,
             # storage_path=str(file_path), Optional
         )
 

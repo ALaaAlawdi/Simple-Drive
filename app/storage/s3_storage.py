@@ -3,8 +3,11 @@ import xml.etree.ElementTree as ET
 
 from app.storage.base import StorageBackendInterface
 from app.core.config import StorageBackend
-from app.blob_schemas import BlobResponse
+from app.blob_schemas import BlobResponse ,  BlobCreate
 from app.s3_client import s3_request
+from app.core.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class S3Storage(StorageBackendInterface):
@@ -57,46 +60,52 @@ class S3Storage(StorageBackendInterface):
         filename: str,
         path: str,
         **kwargs,
-    ) -> BlobResponse | None:
+    ) -> BlobCreate | None:
+        try:
 
-        object_key = self._object_key(blob_id)
-        resp = s3_request("PUT", object_key, data)
+            object_key = self._object_key(blob_id)
+            resp = s3_request("PUT", object_key, data)
 
-        if resp.status_code not in (200, 201):
-            return None
+            if resp.status_code not in (200, 201):
+                logger.warning("Failed to save blob to S3")
+                return None
 
-        return BlobResponse(
-            id=blob_id,
-            data=data,
-            size=len(data),
-            created_at=self._extract_created_at(object_key),
-            name=filename, # Optional
-            path=path, # Optional
-            storage_backend=StorageBackend.S3,
-            # storage_path=object_key, Optional
-        )
+            logger.info(f"Blob saved successfully blob_id {blob_id}")
+            return BlobCreate(
+                id=blob_id,
+                data=data
+            )
+        
+        except  Exception as e:
+            logger.error(f"Exception error {e}")
+            return  None
 
     async def retrieve(self, blob_id: str, **kwargs) -> BlobResponse | None:
-        storage_path = self._find_key(blob_id)
-        if not storage_path:
+
+        try:
+            storage_path = self._find_key(blob_id)
+            if not storage_path:
+                return None
+
+            resp = s3_request("GET", storage_path)
+            if resp.status_code != 200:
+                return None
+
+            data = resp.content
+
+            return BlobResponse(
+                id=blob_id,
+                data=data,
+                size=len(data),
+                created_at=self._extract_created_at(storage_path),
+                # name="unknown", # Optional
+                # path=storage_path, # Optional
+                # storage_backend=StorageBackend.S3,
+                # storage_path=storage_path,
+            )
+        except Exception as e:
+            logger.error(f"Expetion Error :{e}")
             return None
-
-        resp = s3_request("GET", storage_path)
-        if resp.status_code != 200:
-            return None
-
-        data = resp.content
-
-        return BlobResponse(
-            id=blob_id,
-            data=data,
-            size=len(data),
-            created_at=self._extract_created_at(storage_path),
-            name="unknown", # Optional
-            path=storage_path, # Optional
-            storage_backend=StorageBackend.S3,
-            # storage_path=storage_path,
-        )
 
     def get_backend_type(self) -> StorageBackend:
         return StorageBackend.S3

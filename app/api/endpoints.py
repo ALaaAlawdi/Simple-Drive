@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.database import AsyncSession
 from app.core.database import get_db
 from app.core.security import verify_token
-from app.blob_schemas import  BlobResponse
+from app.blob_schemas import  BlobResponse , BlobCreate
 from app.core.logger import setup_logger
 from app.core.config import settings
 import base64
@@ -15,7 +15,7 @@ router = APIRouter()
 logger = setup_logger(__name__)
 
 # Create blob endpoint
-@router.post("/blobs", response_model=BlobResponse, status_code=201)
+@router.post("/blobs", response_model=BlobCreate, status_code=201)
 async def create_blob(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
@@ -46,9 +46,9 @@ async def create_blob(
         )
 
         logger.debug(f"Blob data response for blob id : {blob_id}")
-
+        
         if not blob_data_response:
-            logger.error("Failed to save blob data")
+            logger.error(f"Failed to save blob data{blob_data_response}")
             raise HTTPException(status_code=500, detail="Failed to save blob data")
         
         logger.info(f"Blob created with ID: {blob_data_response.id}")
@@ -57,10 +57,10 @@ async def create_blob(
         raise
     except Exception as e:
         logger.error(f"Error creating blob: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 # Get blob endpoint
-@router.get("/blobs/{blob_id}", response_model=BlobResponse)
+@router.get("/blobs/{blob_id}", response_model=BlobResponse , response_model_exclude_none=True)
 async def get_blob(
     blob_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

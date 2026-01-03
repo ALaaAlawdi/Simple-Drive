@@ -10,7 +10,7 @@ logger =  setup_logger(__name__)
 
 class DatabaseStorage(StorageBackendInterface):
     
-    async def save(self, blob_id: str, data: bytes, filename: str, path: str, **kwargs ) -> BlobResponse | None:
+    async def save(self, blob_id: str, data: bytes, filename: str, path: str, **kwargs ) -> BlobCreate | None:
 
         
         logger.debug(f"DatabaseStorage save started for blob_id: {blob_id}")
@@ -53,15 +53,9 @@ class DatabaseStorage(StorageBackendInterface):
 
         # 6️⃣ Return API response
         logger.info(f"Successfully create Blob for blob_id : {blob_id}")
-        return BlobResponse(
+        return BlobCreate(
             id=blob_id,
             data=data,
-            size=blob_metadata.size,
-            created_at=str(blob_metadata.created_at),
-            name=blob_metadata.name,
-            path=blob_metadata.path,
-            storage_backend=blob_metadata.storage_backend,
-            # storage_path=blob_metadata.storage_path,
         )
 
     
@@ -86,9 +80,9 @@ class DatabaseStorage(StorageBackendInterface):
                 data=blob_data.data,           # Base64
                 size=blob_metadata.size,
                 created_at=str(blob_metadata.created_at),
-                name=blob_metadata.name,
-                path=blob_metadata.path,
-                storage_backend=blob_metadata.storage_backend,
+                # name=blob_metadata.name,
+                # path=blob_metadata.path,
+                # storage_backend=blob_metadata.storage_backend,
                 # storage_path=blob_metadata.storage_path,
             )
     

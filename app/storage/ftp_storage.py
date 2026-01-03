@@ -1,4 +1,4 @@
-from ftplib import FTP
+from ftplib import FTP_TLS
 from io import BytesIO
 from datetime import datetime, timezone
 
@@ -19,15 +19,23 @@ class FTPStorage(StorageBackendInterface):
 
     # ---------- internal helpers ----------
 
-    def _connect(self) -> FTP:
-        ftp = FTP()
-        ftp.connect(self.host, self.port)
-        ftp.login(self.username, self.password)
+    def _connect(self) -> FTP_TLS:
+        ftps = FTP_TLS()
+
+        # Connect
+        ftps.connect(self.host, self.port, timeout=10)
+
+        # 🔑 REQUIRED for FileZilla Server
+        ftps.auth()        # sends AUTH TLS
+        ftps.prot_p()      # encrypts data channel
+
+        # Login
+        ftps.login(self.username, self.password)
 
         if self.directory:
-            ftp.cwd(self.directory)
+            ftps.cwd(self.directory)
 
-        return ftp
+        return ftps
 
     def _object_key(self, blob_id: str) -> str:
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -40,11 +48,11 @@ class FTPStorage(StorageBackendInterface):
             tzinfo=timezone.utc
         )
 
-    def _find_key(self, ftp: FTP, blob_id: str) -> str | None:
+    def _find_key(self, ftps: FTP_TLS, blob_id: str) -> str | None:
         safe_id = blob_id.replace("/", "_")
         suffix = f"__{safe_id}.bin"
 
-        for name in ftp.nlst():
+        for name in ftps.nlst():
             if name.endswith(suffix):
                 return name
 
@@ -61,13 +69,14 @@ class FTPStorage(StorageBackendInterface):
         **kwargs,
     ) -> BlobResponse | None:
 
-        ftp = self._connect()
+        ftps = self._connect()
         object_key = self._object_key(blob_id)
 
         with BytesIO(data) as buffer:
-            ftp.storbinary(f"STOR {object_key}", buffer)
+            buffer.seek(0)
+            ftps.storbinary(f"STOR {object_key}", buffer)
 
-        ftp.quit()
+        ftps.quit()
 
         return BlobResponse(
             id=blob_id,
@@ -81,16 +90,16 @@ class FTPStorage(StorageBackendInterface):
         )
 
     async def retrieve(self, blob_id: str, **kwargs) -> BlobResponse | None:
-        ftp = self._connect()
+        ftps = self._connect()
 
-        storage_path = self._find_key(ftp, blob_id)
+        storage_path = self._find_key(ftps, blob_id)
         if not storage_path:
-            ftp.quit()
+            ftps.quit()
             return None
 
         buffer = BytesIO()
-        ftp.retrbinary(f"RETR {storage_path}", buffer.write)
-        ftp.quit()
+        ftps.retrbinary(f"RETR {storage_path}", buffer.write)
+        ftps.quit()
 
         data = buffer.getvalue()
 

@@ -1,5 +1,5 @@
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings ,  SettingsConfigDict
 from typing import Optional
 from pathlib import Path
 import os
@@ -11,7 +11,8 @@ class StorageBackend(str, Enum):
     LOCAL = "local"
     FTP = "ftp"
 
-     
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 class Settings(BaseSettings):
     # Database settings
     POSTGRESQL_DB_HOST: str = Field(..., env="POSTGRESQL_DB_HOST")
@@ -22,6 +23,9 @@ class Settings(BaseSettings):
 
     # authentication
     AUTH_TOKEN: str = "simple-drive-secret-token"
+    # Debug
+    DEBUG: bool = Field(False, env="DEBUG")
+
 
     # Storage configuration
     STORAGE_BACKEND: StorageBackend = StorageBackend.DATABASE
@@ -52,13 +56,15 @@ class Settings(BaseSettings):
     DB_STORAGE_TABLE: str = "blob_storage"
 
     # Media directory
-    BASE_DIR: str = str(Path(__file__).resolve().parent.parent.parent)
+    # BASE_DIR: str = str(Path(__file__).resolve().parent.parent.parent)
     MEDIA_DIR: str = os.path.join(BASE_DIR, "media")
 
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file= BASE_DIR / ".env",
+        extra="ignore",
+    )
+
 
 
 settings = Settings()

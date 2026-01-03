@@ -11,6 +11,17 @@ from pydantic import BaseModel, field_serializer
 class BlobCreate(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)  
     data: bytes  # Base64 encoded
+
+    @field_validator('data')
+    def validate_base64(cls, v):
+        try:
+            # Try to decode the base64 data
+            base64.b64decode(v, validate=True)
+            return v
+        except Exception:
+            raise ValueError("Invalid base64 data")
+
+    model_config = {"from_attributes": True}
   
 
 class BlobResponse(BaseModel):
@@ -35,10 +46,12 @@ class BlobResponse(BaseModel):
     @field_validator('path')
     def validate_path(cls, v):
         if v is not None:
-            if '..' in v or v.startswith('/'):
+            if '..' in v:
                 raise ValueError("Invalid path format")
             # Clean up path
             v = v.strip('/')
+            # Also handle backslashes for Windows consistency if needed, but let's stick to simple fix first.
+            v = v.replace('\\', '/') # Normalize to forward slashes for consistency
         return v
 
     @field_serializer("created_at")
